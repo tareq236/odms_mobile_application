@@ -1,0 +1,31 @@
+name: Sync Fork
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs every day at midnight UTC
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Forked Repository
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Set Up Git
+        run: |
+          git config --global user.name 'MD. Ismail Hosen James'
+          git config --global user.email 'md.ismailhosenismailjames@gmail.com'
+
+      - name: Add Upstream
+        run: |
+          git remote add upstream https://github.com/IsmailHosenIsmailJames/ODMS_app_rdl_radiant.git
+          git fetch upstream
+          git checkout main
+          git merge upstream/main
+
+      - name: Push Changes
+        run: |
+          git push origin main
