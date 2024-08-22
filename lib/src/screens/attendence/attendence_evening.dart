@@ -12,14 +12,14 @@ import 'package:rdl_radiant/src/apis/apis.dart';
 import '../../core/login/login_function.dart';
 import '../auth/login/login_page.dart';
 
-class AttendencePage extends StatefulWidget {
-  const AttendencePage({super.key});
+class AttendenceEvening extends StatefulWidget {
+  const AttendenceEvening({super.key});
 
   @override
-  State<AttendencePage> createState() => _AttendencePageState();
+  State<AttendenceEvening> createState() => _AttendenceEveningState();
 }
 
-class _AttendencePageState extends State<AttendencePage> {
+class _AttendenceEveningState extends State<AttendenceEvening> {
   Map<String, dynamic> jsonUserdata = {};
   @override
   void initState() {
@@ -41,7 +41,7 @@ class _AttendencePageState extends State<AttendencePage> {
           child: Column(
             children: [
               const Text(
-                'Good Morning',
+                'Good Evening',
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
                   fontSize: 40,
@@ -175,21 +175,19 @@ class _AttendencePageState extends State<AttendencePage> {
                     final decodeData =
                         Map<String, dynamic>.from(jsonDecode(data) as Map);
                     final uri = Uri.parse(
-                      base + startWorkPath,
+                      // ignore: avoid_dynamic_calls
+                      '$base$endWorkPath/${decodeData['result']['sap_id']}',
                     );
-                    final request = http.MultipartRequest('POST', uri);
+                    final request = http.MultipartRequest('PUT', uri);
 
-                    request.fields['sap_id'] =
-                        // ignore: avoid_dynamic_calls
-                        decodeData['result']['sap_id'].toString();
                     final location = Location();
 
                     final locationData = await location.getLocation();
 
-                    request.fields['start_latitude'] =
+                    request.fields['end_latitude'] =
                         locationData.latitude.toString();
 
-                    request.fields['start_longitude'] =
+                    request.fields['end_longitude'] =
                         locationData.longitude.toString();
                     final response = await request.send();
                     setState(() {
@@ -216,6 +214,7 @@ class _AttendencePageState extends State<AttendencePage> {
                         );
                       }
                     } else {
+                      print(response.statusCode);
                       unawaited(
                         Fluttertoast.showToast(msg: 'Something went worng'),
                       );
@@ -231,7 +230,7 @@ class _AttendencePageState extends State<AttendencePage> {
                           color: Colors.white,
                         )
                       : const Text(
-                          'Start Work',
+                          'Finish Work',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
