@@ -1,12 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:gap/gap.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
-import 'package:location/location.dart';
-import 'package:rdl_radiant/src/screens/auth/login/login_page.dart';
+import 'package:hive/hive.dart';
 import 'package:simple_icons/simple_icons.dart';
+
+import '../attendence/attendence_page.dart';
+import '../home/home_page.dart';
 
 class CheakAndRequestPermissions extends StatefulWidget {
   const CheakAndRequestPermissions({super.key});
@@ -63,33 +67,49 @@ class _CheakAndRequestPermissionsState
           const Gap(30),
           ElevatedButton.icon(
             onPressed: () async {
-              final location = Location();
+              final serviceEnabled =
+                  await Geolocator.isLocationServiceEnabled();
 
-              var serviceEnabled = await location.serviceEnabled();
               if (!serviceEnabled) {
-                serviceEnabled = await location.requestService();
-                if (!serviceEnabled) {
-                  return;
-                }
+                return;
               }
 
-              var status = await location.hasPermission();
-              if (status == PermissionStatus.denied) {
-                status = await location.requestPermission();
+              var status = await Geolocator.checkPermission();
+
+              if (status == LocationPermission.denied) {
+                status = await Geolocator.requestPermission();
               }
-              if (status == PermissionStatus.granted) {
+              if (status == LocationPermission.whileInUse ||
+                  status == LocationPermission.always) {
                 unawaited(
                   Fluttertoast.showToast(
                     msg: 'You did allow location access',
                     toastLength: Toast.LENGTH_LONG,
                   ),
                 );
-                unawaited(
-                  Get.off(
-                    () => const LoginPage(),
-                  ),
+                final userLoginDataCridential = Map<String, dynamic>.from(
+                  jsonDecode(
+                    Hive.box('info').get(
+                      'userData',
+                      defaultValue: '{}',
+                    ) as String,
+                  ) as Map,
                 );
-              } else if (status == PermissionStatus.denied) {
+                if ((userLoginDataCridential['is_start_work'] ?? false) ==
+                    true) {
+                  unawaited(
+                    Get.offAll(
+                      () => const HomePage(),
+                    ),
+                  );
+                } else {
+                  unawaited(
+                    Get.offAll(
+                      () => const AttendencePage(),
+                    ),
+                  );
+                }
+              } else if (status == LocationPermission.denied) {
                 unawaited(
                   Fluttertoast.showToast(
                     msg: 'You denied location access',
@@ -99,17 +119,7 @@ class _CheakAndRequestPermissionsState
                 setState(() {
                   accestStatusText = 'You denied location access';
                 });
-              } else if (status == PermissionStatus.grantedLimited) {
-                unawaited(
-                  Fluttertoast.showToast(
-                    msg: 'You Granted Limited location access',
-                    toastLength: Toast.LENGTH_LONG,
-                  ),
-                );
-                setState(() {
-                  accestStatusText = 'You restricted location access';
-                });
-              } else if (status == PermissionStatus.deniedForever) {
+              } else if (status == LocationPermission.deniedForever) {
                 unawaited(
                   Fluttertoast.showToast(
                     msg: 'You permanently denied location access',
