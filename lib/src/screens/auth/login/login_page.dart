@@ -1,6 +1,9 @@
+// ignore_for_file: avoid_dynamic_calls
+
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -13,9 +16,11 @@ import 'package:rdl_radiant/src/core/login/login_function.dart';
 import 'package:rdl_radiant/src/screens/attendence/attendence_page.dart';
 import 'package:rdl_radiant/src/screens/home/home_page.dart';
 import 'package:rdl_radiant/src/screens/permissions/unable_to_connect.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../theme/textfield_theme.dart';
 import '../../permissions/cheak_and_request_permissions.dart';
+import '../../permissions/cheak_location_service.dart';
 import '../register/register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -141,19 +146,42 @@ class _LoginPageState extends State<LoginPage> {
                         child: ElevatedButton(
                           onPressed: () async {
                             if (formKey.currentState!.validate()) {
+                              showCupertinoModalPopup(
+                                context: context,
+                                builder: (context) => Scaffold(
+                                  backgroundColor:
+                                      Colors.white.withOpacity(0.1),
+                                  body: const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Color.fromARGB(255, 74, 174, 255),
+                                    ),
+                                  ),
+                                ),
+                              );
+
                               final response = await loginAndGetJsonResponse(
                                 {
                                   'sap_id': sapIDController.text.trim(),
                                   'password': passwordController.text.trim(),
                                 },
                               );
-                              await analyzeResponseLogin(
-                                response,
-                                {
-                                  'sap_id': sapIDController.text.trim(),
-                                  'password': passwordController.text.trim(),
-                                },
-                              );
+
+                              if (Navigator.canPop(context)) {
+                                Navigator.pop(context);
+                              }
+                              if (response != null) {
+                                await analyzeResponseLogin(
+                                  response,
+                                  {
+                                    'sap_id': sapIDController.text.trim(),
+                                    'password': passwordController.text.trim(),
+                                  },
+                                );
+                              } else {
+                                Get.to(
+                                  () => const UnableToConnect(),
+                                );
+                              }
                             }
                           },
                           style: ElevatedButton.styleFrom(
@@ -233,13 +261,27 @@ Future<void> analyzeResponseLogin(
       if ((jsonMapData['success'] ?? false) == true) {
         final box = Hive.box('info');
         await box.put('userData', response.body);
+        await box.put('sap_id', jsonMapData['result']['sap_id']);
         await box.put(
           'userLoginCradintial',
           userCrid,
         );
 
+        await SharedPreferences.getInstance().then((instance) async {
+          await instance.setString(
+            'userLoginCradintial',
+            jsonEncode(userCrid),
+          );
+          await instance.setString('userData', response.body);
+        });
+
         final serviceEnabled = await Geolocator.isLocationServiceEnabled();
         if (!serviceEnabled) {
+          Get.offAll(
+            () => CheakLocationService(
+              responseMapData: jsonMapData,
+            ),
+          );
           return;
         }
 
@@ -266,6 +308,7 @@ Future<void> analyzeResponseLogin(
         if (kDebugMode) {
           print(response.body);
         }
+
         unawaited(
           Fluttertoast.showToast(
             msg: 'Login Successfull',

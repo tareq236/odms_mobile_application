@@ -10,10 +10,14 @@ import 'package:gap/gap.dart';
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:rdl_radiant/src/apis/apis.dart';
 import 'package:rdl_radiant/src/core/background/socket_connection_state.dart/socket_connection_state.dart';
+import 'package:rdl_radiant/src/core/background/socket_manager/socket_manager.dart';
+import 'package:rdl_radiant/src/screens/home/delivary_ramaining/controller/delivery_remaning_controller.dart';
+import 'package:rdl_radiant/src/screens/home/delivary_ramaining/delivery_remaining_page.dart';
+import 'package:rdl_radiant/src/screens/home/delivary_ramaining/models/deliver_remaing_model.dart';
 import 'package:rdl_radiant/src/screens/home/drawer/drawer.dart';
-import 'package:socket_io_client/socket_io_client.dart' as socket_io;
 
 import '../../core/background/background_setup.dart';
 
@@ -38,30 +42,8 @@ class _HomePageState extends State<HomePage> {
     jsonUserdata = Map<String, dynamic>.from(jsonUserdata['result'] as Map);
 
     FlutterForegroundTask.addTaskDataCallback(onReceiveTaskData);
-    final socket = socket_io.io(
-      'http://174.138.120.140:6044',
-      socket_io.OptionBuilder()
-          .setTransports(['websocket']) // for Flutter or Dart VM
-          .disableAutoConnect() // disable auto-connection
-          .build(),
-    );
-    socket.onConnect(
-      (_) {
-        if (kDebugMode) {
-          print('Connected');
-        }
-        socketConnectionStateGetx.socketConnected.value = true;
-      },
-    );
-    socket.onDisconnect(
-      (_) {
-        if (kDebugMode) {
-          print('Disconnected');
-        }
-        socketConnectionStateGetx.socketConnected.value = false;
-      },
-    );
-    socket.connect();
+    SocketManager().connect();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Request permissions and initialize the service.
       requestPermissions().then((value) {
@@ -196,12 +178,121 @@ class _HomePageState extends State<HomePage> {
                             Image.asset('assets/delivery-truck.png'),
                             'Delivary Remaining',
                             0,
+                            onPressed: () async {
+                              final box = Hive.box('info');
+                              final url = Uri.parse(
+                                "$base$getDelivaryList/${box.get('sap_id')}?type=Remaining&date=${DateFormat('yyyy-MM-dd').format(DateTime.now())}",
+                              );
+
+                              showCupertinoModalPopup(
+                                context: context,
+                                builder: (context) => Scaffold(
+                                  backgroundColor:
+                                      Colors.white.withOpacity(0.1),
+                                  body: const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Color.fromARGB(255, 74, 174, 255),
+                                    ),
+                                  ),
+                                ),
+                              );
+
+                              final response = await http.get(url);
+
+                              if (Navigator.canPop(context)) {
+                                Navigator.pop(context);
+                              }
+
+                              if (response.statusCode == 200) {
+                                if (kDebugMode) {
+                                  print("Got Delivery Remaning List");
+                                  print(response.body);
+                                }
+
+                                final controller = Get.put(
+                                  DeliveryRemaningController(
+                                    DeliveryRemaing.fromJson(response.body),
+                                  ),
+                                );
+                                controller.deliveryRemaing.value =
+                                    DeliveryRemaing.fromJson(response.body);
+                                controller.constDeliveryRemaing.value =
+                                    DeliveryRemaing.fromJson(response.body);
+                                controller.deliveryRemaing.value.result ??= [];
+                                controller.constDeliveryRemaing.value.result ??=
+                                    [];
+                                Get.to(
+                                  () => const DeliveryRemainingPage(),
+                                );
+                              } else {
+                                if (kDebugMode) {
+                                  print(
+                                    "Delivery Remaining response error : ${response.statusCode}",
+                                  );
+                                }
+                              }
+                            },
                           ),
                           getCardView(
                             data['delivery_done'].toString(),
                             Image.asset('assets/delivery_done.png'),
                             'Delivary Done',
                             1,
+                            onPressed: () async {
+                              final box = Hive.box('info');
+                              final url = Uri.parse(
+                                "$base$getDelivaryList/${box.get('sap_id')}?type=Done&date=${DateFormat('yyyy-MM-dd').format(DateTime.now())}",
+                              );
+
+                              showCupertinoModalPopup(
+                                context: context,
+                                builder: (context) => Scaffold(
+                                  backgroundColor:
+                                      Colors.white.withOpacity(0.1),
+                                  body: const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Color.fromARGB(255, 74, 174, 255),
+                                    ),
+                                  ),
+                                ),
+                              );
+
+                              final response = await http.get(url);
+
+                              if (Navigator.canPop(context)) {
+                                Navigator.pop(context);
+                              }
+
+                              if (response.statusCode == 200) {
+                                if (kDebugMode) {
+                                  print("Got Delivery Remaning List");
+                                  print(response.body);
+                                }
+
+                                final controller = Get.put(
+                                  DeliveryRemaningController(
+                                    DeliveryRemaing.fromJson(response.body),
+                                  ),
+                                );
+                                controller.deliveryRemaing.value =
+                                    DeliveryRemaing.fromJson(response.body);
+                                controller.constDeliveryRemaing.value =
+                                    DeliveryRemaing.fromJson(response.body);
+                                controller.deliveryRemaing.value.result ??= [];
+                                controller.constDeliveryRemaing.value.result ??=
+                                    [];
+                                controller.isDataForDeliveryDone.value = true;
+                                Get.to(
+                                  () => const DeliveryRemainingPage(),
+                                );
+                              } else {
+                                if (kDebugMode) {
+                                  print(
+                                    "Delivery Remaining response error : ${response.statusCode}",
+                                  );
+                                }
+                              }
+                            },
                           ),
                           getCardView(
                             data['cash_remaining'].toString(),
@@ -286,92 +377,97 @@ class _HomePageState extends State<HomePage> {
     String? count,
     Widget iconWidget,
     String titleText,
-    int colorIndex,
-  ) {
+    int colorIndex, {
+    void Function()? onPressed,
+  }) {
     final color = [
       Colors.blue.withOpacity(0.15),
       Colors.blue.withOpacity(0.15),
     ][colorIndex];
-    return Container(
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      padding: const EdgeInsets.all(5),
-      margin: const EdgeInsets.only(top: 5, bottom: 5),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(5),
-            margin: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(100),
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: onPressed,
+      child: Container(
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        padding: const EdgeInsets.all(5),
+        margin: const EdgeInsets.only(top: 5, bottom: 5),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(5),
+              margin: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(100),
+              ),
+              height: 50,
+              width: 50,
+              child: iconWidget,
             ),
-            height: 50,
-            width: 50,
-            child: iconWidget,
-          ),
-          const Gap(20),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                titleText,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
+            const Gap(20),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titleText,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Container(
+                  child: count == null
+                      ? Container(
+                          width: 100,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade400,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        )
+                          .animate(onPlay: (controller) => controller.repeat())
+                          .shimmer(
+                            duration: 1200.ms,
+                            color: const Color(0xFF80DDFF),
+                          )
+                          .animate()
+                          .fadeIn(duration: 1200.ms, curve: Curves.easeOutQuad)
+                          .slide()
+                      : Text(
+                          count,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            Container(
+              height: 20,
+              width: 20,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(100),
+                border: Border.all(
+                  width: 1.5,
+                  color: Colors.blue.shade900,
                 ),
               ),
-              Container(
-                child: count == null
-                    ? Container(
-                        width: 100,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade400,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      )
-                        .animate(onPlay: (controller) => controller.repeat())
-                        .shimmer(
-                          duration: 1200.ms,
-                          color: const Color(0xFF80DDFF),
-                        )
-                        .animate()
-                        .fadeIn(duration: 1200.ms, curve: Curves.easeOutQuad)
-                        .slide()
-                    : Text(
-                        count,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Container(
-            height: 20,
-            width: 20,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(100),
-              border: Border.all(
-                width: 1.5,
+              child: Icon(
+                CupertinoIcons.forward,
                 color: Colors.blue.shade900,
+                size: 15,
               ),
             ),
-            child: Icon(
-              CupertinoIcons.forward,
-              color: Colors.blue.shade900,
-              size: 15,
-            ),
-          ),
-          const Gap(20),
-        ],
+            const Gap(20),
+          ],
+        ),
       ),
     );
   }
