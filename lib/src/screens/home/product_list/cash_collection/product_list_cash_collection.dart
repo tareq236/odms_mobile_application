@@ -2,13 +2,14 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:clipboard/clipboard.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:gap/gap.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
+import 'package:hive/hive.dart';
+import 'package:intl/intl.dart';
 import 'package:rdl_radiant/src/apis/apis.dart';
 import 'package:rdl_radiant/src/screens/home/delivary_ramaining/controller/delivery_remaning_controller.dart';
 import 'package:rdl_radiant/src/screens/home/delivary_ramaining/models/deliver_remaing_model.dart';
@@ -16,6 +17,7 @@ import 'package:rdl_radiant/src/screens/home/invoice_list/controller/invoice_lis
 import 'package:rdl_radiant/src/screens/home/page_sate_defination.dart';
 import 'package:rdl_radiant/src/screens/home/product_list/cash_collection/to_send_cash_data_model.dart';
 import 'package:http/http.dart' as http;
+import 'package:rdl_radiant/src/widgets/coomon_widgets_function.dart';
 
 import '../../../../widgets/loading/loading_popup_widget.dart';
 import '../../../../widgets/loading/loading_text_controller.dart';
@@ -72,6 +74,11 @@ class _ProductListCashCollectionState extends State<ProductListCashCollection> {
     pageType = deliveryRemaningController.pageType.value;
     super.initState();
   }
+
+  Widget divider = const Divider(
+    color: Colors.white,
+    height: 1,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -159,344 +166,70 @@ class _ProductListCashCollectionState extends State<ProductListCashCollection> {
                         padding: const EdgeInsets.all(10),
                         child: Column(
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "Coustomer Name",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Text(
-                                      widget.invoice.customerName ?? "",
-                                      style: topContainerTextStyle,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            getRowWidgetForDetailsBox(
+                              "Coustomer Name",
+                              widget.invoice.customerName ?? "",
                             ),
-                            const Divider(
-                              color: Colors.white,
-                              height: 1,
+                            divider,
+                            getRowWidgetForDetailsBox(
+                              "Coustomer Address",
+                              widget.invoice.customerAddress ?? "",
                             ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "Coustomer Address",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                            divider,
+                            getRowWidgetForDetailsBox(
+                              "Coustomer Mobile",
+                              widget.invoice.customerMobile ?? "",
+                              optionalWidgetsAtLast: SizedBox(
+                                height: 23,
+                                width: 90,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  onPressed: () {
+                                    FlutterClipboard.copy(
+                                      widget.invoice.customerMobile ?? "",
+                                    ).then((value) {
+                                      Fluttertoast.showToast(
+                                          msg: "Number Copied");
+                                    });
+                                  },
+                                  icon: const Icon(
+                                    Icons.copy,
+                                    size: 17,
                                   ),
                                 ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Text(
-                                      widget.invoice.customerAddress ?? "",
-                                      style: topContainerTextStyle,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                            const Divider(
-                              color: Colors.white,
-                              height: 1,
+                            divider,
+                            getRowWidgetForDetailsBox(
+                              "Gate Pass",
+                              widget.invoice.gatePassNo ?? "",
                             ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "Coustomer Mobile",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          widget.invoice.customerMobile ?? "",
-                                          style: topContainerTextStyle,
-                                        ),
-                                        SizedBox(
-                                          height: 23,
-                                          width: 90,
-                                          child: IconButton(
-                                            padding: EdgeInsets.zero,
-                                            onPressed: () {
-                                              FlutterClipboard.copy(
-                                                widget.invoice.customerMobile ??
-                                                    "",
-                                              ).then((value) {
-                                                Fluttertoast.showToast(
-                                                    msg: "Number Copied");
-                                              });
-                                            },
-                                            icon: const Icon(
-                                              Icons.copy,
-                                              size: 17,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            divider,
+                            getRowWidgetForDetailsBox(
+                              "Vehicle No",
+                              widget.invoice.vehicleNo ?? "",
                             ),
-                            const Divider(
-                              color: Colors.white,
-                              height: 1,
+                            divider,
+                            getRowWidgetForDetailsBox(
+                              "Total Amount",
+                              widget.totalAmount,
                             ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "Gate Pass",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Text(
-                                      widget.invoice.gatePassNo ?? "",
-                                      style: topContainerTextStyle,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            divider,
+                            getRowWidgetForDetailsBox(
+                              "Return Amount",
+                              totalRetrunAmmount.toStringAsFixed(2),
                             ),
-                            const Divider(
-                              color: Colors.white,
-                              height: 1,
+                            divider,
+                            getRowWidgetForDetailsBox(
+                              "To pay",
+                              (double.parse(widget.totalAmount) -
+                                      totalRetrunAmmount)
+                                  .toStringAsFixed(2),
                             ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "Vehicle No",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Text(
-                                      widget.invoice.vehicleNo ?? "",
-                                      style: topContainerTextStyle,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Divider(
-                              color: Colors.white,
-                              height: 1,
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "Total Amount",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Text(
-                                      widget.totalAmount,
-                                      style: topContainerTextStyle,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Divider(
-                              color: Colors.white,
-                              height: 1,
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "Return Amount",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Text(
-                                      totalRetrunAmmount.toStringAsFixed(2),
-                                      style: topContainerTextStyle,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Divider(
-                              color: Colors.white,
-                              height: 1,
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "To pay",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Text(
-                                      (double.parse(widget.totalAmount) -
-                                              totalRetrunAmmount)
-                                          .toStringAsFixed(2),
-                                      style: topContainerTextStyle,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Divider(
-                              color: Colors.white,
-                              height: 1,
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "Due Amount",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Text(
-                                      (dueAmount).toStringAsFixed(2),
-                                      style: topContainerTextStyle,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            divider,
+                            getRowWidgetForDetailsBox(
+                              "Due Amount",
+                              (dueAmount).toStringAsFixed(2),
                             ),
                           ],
                         ),
@@ -843,108 +576,7 @@ class _ProductListCashCollectionState extends State<ProductListCashCollection> {
                         width: MediaQuery.of(context).size.width * 0.45,
                         child: ElevatedButton(
                           onPressed: () async {
-                            if (formKey.currentState!.validate()) {
-                              loadingTextController.currentState.value = 0;
-                              loadingTextController.loadingText.value =
-                                  'Accessing Your Location\nPlease wait...';
-
-                              showCoustomPopUpLoadingDialog(context,
-                                  isCuputino: true);
-                              try {
-                                final position =
-                                    await Geolocator.getCurrentPosition(
-                                  locationSettings: AndroidSettings(
-                                      timeLimit: const Duration(seconds: 30)),
-                                );
-                                List<DeliveryCash> listOfDeliveryCash = [];
-                                for (int i = 0; i < productList.length; i++) {
-                                  final e = productList[i];
-                                  String returnText =
-                                      returnTextEditingControllerList[i]
-                                          .text
-                                          .trim();
-                                  if (returnText.isEmpty) returnText = "0";
-                                  listOfDeliveryCash.add(DeliveryCash(
-                                    id: int.parse("${productList[i].id}"),
-                                    returnNetVal: ((((e.netVal ?? 0) +
-                                                    (e.vat ?? 0)) /
-                                                (productList[i].quantity ?? 0)
-                                                    .toInt()) *
-                                            int.parse(returnText))
-                                        .toStringAsFixed(2),
-                                    returnQuantity: int.parse(returnText),
-                                    vat: e.vat,
-                                  ));
-                                }
-
-                                final toSendCashDataModel = ToSendCashDataModel(
-                                  billingDocNo: widget.invoice.billingDocNo,
-                                  lastStatus: "cash_collection",
-                                  type: "cash_collection",
-                                  cashCollection: double.tryParse(
-                                      receivedAmmountController.text),
-                                  cashCollectionLatitude:
-                                      position.latitude.toString(),
-                                  cashCollectionLongitude:
-                                      position.longitude.toString(),
-                                  cashCollectionStatus: "Done",
-                                  deliverys: listOfDeliveryCash,
-                                );
-
-                                if (kDebugMode) {
-                                  log("Sending to api: ");
-                                  log(toSendCashDataModel.toJson());
-                                }
-                                loadingTextController.loadingText.value =
-                                    'Your Location Accessed\nSending data to server\nPlease wait...';
-
-                                final uri = Uri.parse(
-                                    "$base$cashCollectionSave/${widget.invoice.id}");
-                                final response = await http.put(
-                                  uri,
-                                  headers: {"Content-Type": "application/json"},
-                                  body: toSendCashDataModel.toJson(),
-                                );
-                                if (kDebugMode) {
-                                  log("received form api: ");
-                                  log(response.body);
-                                }
-                                if (kDebugMode) {
-                                  log(response.statusCode.toString());
-                                }
-
-                                if (response.statusCode == 200) {
-                                  final decoded = Map<String, dynamic>.from(
-                                      jsonDecode(response.body));
-                                  if (decoded['success'] == true) {
-                                    loadingTextController.currentState.value =
-                                        0;
-                                    loadingTextController.loadingText.value =
-                                        'Successful';
-                                    invoiceListController.invoiceList.removeAt(
-                                      widget.index,
-                                    );
-                                    if (Navigator.canPop(context)) {
-                                      Navigator.pop(context);
-                                    }
-                                    Get.back();
-                                  } else {
-                                    loadingTextController.currentState.value =
-                                        -1;
-                                    loadingTextController.loadingText.value =
-                                        decoded['message'];
-                                  }
-                                } else {
-                                  loadingTextController.currentState.value = -1;
-                                  loadingTextController.loadingText.value =
-                                      'Something went worng with ${response.statusCode}';
-                                }
-                              } catch (e) {
-                                loadingTextController.currentState.value = -1;
-                                loadingTextController.loadingText.value =
-                                    'Unable to access your location';
-                              }
-                            }
+                            await onCashCollectedButtonPressed(context);
                           },
                           child: const Text("Cash Collected"),
                         ),
@@ -955,6 +587,124 @@ class _ProductListCashCollectionState extends State<ProductListCashCollection> {
         ),
       ),
     );
+  }
+
+  Future<void> onCashCollectedButtonPressed(BuildContext context) async {
+    if (formKey.currentState!.validate()) {
+      loadingTextController.currentState.value = 0;
+      loadingTextController.loadingText.value =
+          'Accessing Your Location\nPlease wait...';
+
+      showCoustomPopUpLoadingDialog(context, isCuputino: true);
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings:
+              AndroidSettings(timeLimit: const Duration(seconds: 30)),
+        );
+        List<DeliveryCash> listOfDeliveryCash = [];
+        for (int i = 0; i < productList.length; i++) {
+          final e = productList[i];
+          String returnText = returnTextEditingControllerList[i].text.trim();
+          if (returnText.isEmpty) returnText = "0";
+          listOfDeliveryCash.add(DeliveryCash(
+            id: int.parse("${productList[i].id}"),
+            returnNetVal: ((((e.netVal ?? 0) + (e.vat ?? 0)) /
+                        (productList[i].quantity ?? 0).toInt()) *
+                    int.parse(returnText))
+                .toStringAsFixed(2),
+            returnQuantity: int.parse(returnText),
+            vat: e.vat,
+          ));
+        }
+
+        final toSendCashDataModel = ToSendCashDataModel(
+          billingDocNo: widget.invoice.billingDocNo,
+          lastStatus: "cash_collection",
+          type: "cash_collection",
+          cashCollection: double.tryParse(receivedAmmountController.text),
+          cashCollectionLatitude: position.latitude.toString(),
+          cashCollectionLongitude: position.longitude.toString(),
+          cashCollectionStatus: "Done",
+          deliverys: listOfDeliveryCash,
+        );
+
+        if (kDebugMode) {
+          log("Sending to api: ");
+          log(toSendCashDataModel.toJson());
+        }
+        loadingTextController.loadingText.value =
+            'Your Location Accessed\nSending data to server\nPlease wait...';
+
+        final uri = Uri.parse("$base$cashCollectionSave/${widget.invoice.id}");
+        final response = await http.put(
+          uri,
+          headers: {"Content-Type": "application/json"},
+          body: toSendCashDataModel.toJson(),
+        );
+        if (kDebugMode) {
+          log("received form api: ");
+          log(response.body);
+        }
+        if (kDebugMode) {
+          log(response.statusCode.toString());
+        }
+
+        if (response.statusCode == 200) {
+          final decoded = Map<String, dynamic>.from(jsonDecode(response.body));
+          if (decoded['success'] == true) {
+            try {
+              final box = Hive.box('info');
+              final url = Uri.parse(
+                "$base${(pageType == pagesState[0] || pageType == pagesState[1]) ? getDelivaryList : cashCollectionList}/${box.get('sap_id')}?type=${(pageType == pagesState[1] ? "Done" : "Remaining")}&date=${DateFormat('yyyy-MM-dd').format(DateTime.now())}",
+              );
+
+              final response = await http.get(url);
+
+              if (response.statusCode == 200) {
+                if (kDebugMode) {
+                  print("Got Delivery Remaning List");
+                  print(response.body);
+                }
+
+                final controller = Get.put(
+                  DeliveryRemaningController(
+                    DeliveryRemaing.fromJson(response.body),
+                  ),
+                );
+                controller.deliveryRemaing.value =
+                    DeliveryRemaing.fromJson(response.body);
+                controller.constDeliveryRemaing.value =
+                    DeliveryRemaing.fromJson(response.body);
+                controller.deliveryRemaing.value.result ??= [];
+                controller.constDeliveryRemaing.value.result ??= [];
+              }
+            } catch (e) {
+              log(e.toString());
+            }
+            loadingTextController.currentState.value = 0;
+            loadingTextController.loadingText.value = 'Successful';
+            invoiceListController.invoiceList.removeAt(
+              widget.index,
+            );
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            }
+            Get.back();
+          } else {
+            loadingTextController.currentState.value = -1;
+            loadingTextController.loadingText.value = decoded['message'];
+          }
+        } else {
+          loadingTextController.currentState.value = -1;
+          loadingTextController.loadingText.value =
+              'Something went worng with ${response.statusCode}';
+        }
+      } catch (e) {
+        loadingTextController.currentState.value = -1;
+        loadingTextController.loadingText.value =
+            'Unable to access your location';
+      }
+    }
   }
 
   TextStyle style = const TextStyle(fontSize: 17, fontWeight: FontWeight.bold);

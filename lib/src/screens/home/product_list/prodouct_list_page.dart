@@ -1,13 +1,14 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:clipboard/clipboard.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:gap/gap.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
+import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import 'package:rdl_radiant/src/apis/apis.dart';
 import 'package:rdl_radiant/src/screens/home/delivary_ramaining/controller/delivery_remaning_controller.dart';
@@ -16,11 +17,13 @@ import 'package:rdl_radiant/src/screens/home/invoice_list/controller/invoice_lis
 import 'package:rdl_radiant/src/screens/home/page_sate_defination.dart';
 import 'package:rdl_radiant/src/screens/home/product_list/models/delivery_data.dart';
 import 'package:http/http.dart' as http;
+import 'package:rdl_radiant/src/widgets/coomon_widgets_function.dart';
 
 import '../../../widgets/loading/loading_popup_widget.dart';
 import '../../../widgets/loading/loading_text_controller.dart';
 
 class ProdouctListPage extends StatefulWidget {
+  final DateTime? dateOfDelivery;
   final InvoiceList invoice;
   final String invioceNo;
   final String totalAmount;
@@ -31,6 +34,7 @@ class ProdouctListPage extends StatefulWidget {
     required this.invioceNo,
     required this.totalAmount,
     required this.index,
+    this.dateOfDelivery,
   });
 
   @override
@@ -66,8 +70,23 @@ class _ProdouctListPageState extends State<ProdouctListPage> {
     super.initState();
   }
 
+  Widget divider = const Divider(
+    color: Colors.white,
+    height: 1,
+  );
+
   @override
   Widget build(BuildContext context) {
+    bool isDeliveryForToday = true;
+    if (widget.dateOfDelivery != null) {
+      DateTime now = DateTime.now();
+      DateTime dateOfDelivery = widget.dateOfDelivery!;
+      if (dateOfDelivery.day != now.day ||
+          dateOfDelivery.month != now.month ||
+          dateOfDelivery.year != now.year) {
+        isDeliveryForToday = false;
+      }
+    }
     double totalReceiveAmmount = 0;
     for (var e in receiveAmountList) {
       totalReceiveAmmount += e;
@@ -85,72 +104,74 @@ class _ProdouctListPageState extends State<ProdouctListPage> {
         actions: pageType == pagesState[1]
             ? null
             : [
-                PopupMenuButton(
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      child: const Row(
-                        children: [
-                          Icon(
-                            Icons.done_all,
-                            color: Colors.green,
-                          ),
-                          Gap(10),
-                          Text("All Received"),
-                        ],
+                if (isDeliveryForToday)
+                  PopupMenuButton(
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.done_all,
+                              color: Colors.green,
+                            ),
+                            Gap(10),
+                            Text("All Received"),
+                          ],
+                        ),
+                        onTap: () {
+                          for (var index = 0;
+                              index < productList.length;
+                              index++) {
+                            ProductList current = productList[index];
+                            double perProduct =
+                                ((current.netVal ?? 0) + (current.vat ?? 0)) /
+                                    (current.quantity ?? 0);
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              receiveTextEditingControllerList[index].text =
+                                  (current.quantity ?? 0).toInt().toString();
+                              returnTextEditingControllerList[index].text = '0';
+                            });
+                            receiveAmountList[index] =
+                                (current.quantity ?? 0) * perProduct;
+                            returnAmountList[index] = 0;
+                          }
+                          setState(() {});
+                        },
                       ),
-                      onTap: () {
-                        for (var index = 0;
-                            index < productList.length;
-                            index++) {
-                          ProductList current = productList[index];
-                          double perProduct =
-                              ((current.netVal ?? 0) + (current.vat ?? 0)) /
-                                  (current.quantity ?? 0);
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            receiveTextEditingControllerList[index].text =
-                                (current.quantity ?? 0).toInt().toString();
-                            returnTextEditingControllerList[index].text = '0';
-                          });
-                          receiveAmountList[index] =
-                              (current.quantity ?? 0) * perProduct;
-                          returnAmountList[index] = 0;
-                        }
-                        setState(() {});
-                      },
-                    ),
-                    PopupMenuItem(
-                      child: const Row(
-                        children: [
-                          Icon(
-                            Icons.close,
-                            color: Colors.deepOrange,
-                          ),
-                          Gap(10),
-                          Text("All Return"),
-                        ],
+                      PopupMenuItem(
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.close,
+                              color: Colors.deepOrange,
+                            ),
+                            Gap(10),
+                            Text("All Return"),
+                          ],
+                        ),
+                        onTap: () {
+                          for (var index = 0;
+                              index < productList.length;
+                              index++) {
+                            ProductList current = productList[index];
+                            double perProduct =
+                                ((current.netVal ?? 0) + (current.vat ?? 0)) /
+                                    (current.quantity ?? 0);
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              returnTextEditingControllerList[index].text =
+                                  (current.quantity ?? 0).toInt().toString();
+                              receiveTextEditingControllerList[index].text =
+                                  '0';
+                            });
+                            returnAmountList[index] =
+                                (current.quantity ?? 0) * perProduct;
+                            receiveAmountList[index] = 0;
+                          }
+                          setState(() {});
+                        },
                       ),
-                      onTap: () {
-                        for (var index = 0;
-                            index < productList.length;
-                            index++) {
-                          ProductList current = productList[index];
-                          double perProduct =
-                              ((current.netVal ?? 0) + (current.vat ?? 0)) /
-                                  (current.quantity ?? 0);
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            returnTextEditingControllerList[index].text =
-                                (current.quantity ?? 0).toInt().toString();
-                            receiveTextEditingControllerList[index].text = '0';
-                          });
-                          returnAmountList[index] =
-                              (current.quantity ?? 0) * perProduct;
-                          receiveAmountList[index] = 0;
-                        }
-                        setState(() {});
-                      },
-                    ),
-                  ],
-                )
+                    ],
+                  )
               ],
       ),
       body: Form(
@@ -188,237 +209,53 @@ class _ProdouctListPageState extends State<ProdouctListPage> {
                         padding: const EdgeInsets.all(10),
                         child: Column(
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "Coustomer Name",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Text(
-                                      widget.invoice.customerName ?? "",
-                                      style: topContainerTextStyle,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            getRowWidgetForDetailsBox(
+                              "Coustomer Name",
+                              widget.invoice.customerName ?? "",
                             ),
-                            const Divider(
-                              color: Colors.white,
-                              height: 1,
+                            divider,
+                            getRowWidgetForDetailsBox(
+                              "Coustomer Address",
+                              widget.invoice.customerAddress ?? "",
                             ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "Coustomer Address",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                            divider,
+                            getRowWidgetForDetailsBox(
+                              "Coustomer Mobile",
+                              widget.invoice.customerMobile ?? "",
+                              optionalWidgetsAtLast: SizedBox(
+                                height: 23,
+                                width: 90,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  onPressed: () {
+                                    FlutterClipboard.copy(
+                                      widget.invoice.customerMobile ?? "",
+                                    ).then((value) {
+                                      Fluttertoast.showToast(
+                                          msg: "Number Copied");
+                                    });
+                                  },
+                                  icon: const Icon(
+                                    Icons.copy,
+                                    size: 17,
                                   ),
                                 ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Text(
-                                      widget.invoice.customerAddress ?? "",
-                                      style: topContainerTextStyle,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                            const Divider(
-                              color: Colors.white,
-                              height: 1,
+                            divider,
+                            getRowWidgetForDetailsBox(
+                              "Gate Pass",
+                              widget.invoice.gatePassNo ?? "",
                             ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "Coustomer Mobile",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          widget.invoice.customerMobile ?? "",
-                                          style: topContainerTextStyle,
-                                        ),
-                                        SizedBox(
-                                          height: 23,
-                                          width: 90,
-                                          child: IconButton(
-                                            padding: EdgeInsets.zero,
-                                            onPressed: () {
-                                              FlutterClipboard.copy(
-                                                widget.invoice.customerMobile ??
-                                                    "",
-                                              ).then((value) {
-                                                Fluttertoast.showToast(
-                                                    msg: "Number Copied");
-                                              });
-                                            },
-                                            icon: const Icon(
-                                              Icons.copy,
-                                              size: 17,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            divider,
+                            getRowWidgetForDetailsBox(
+                              "Vehicle No",
+                              widget.invoice.vehicleNo ?? "",
                             ),
-                            const Divider(
-                              color: Colors.white,
-                              height: 1,
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "Gate Pass",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Text(
-                                      widget.invoice.gatePassNo ?? "",
-                                      style: topContainerTextStyle,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Divider(
-                              color: Colors.white,
-                              height: 1,
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "Vehicle No",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Text(
-                                      widget.invoice.vehicleNo ?? "",
-                                      style: topContainerTextStyle,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Divider(
-                              color: Colors.white,
-                              height: 1,
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: const Text(
-                                      "Total Amount",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Text(
-                                  ":  ",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    child: Text(
-                                      widget.totalAmount,
-                                      style: topContainerTextStyle,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            divider,
+                            getRowWidgetForDetailsBox(
+                              "Total Amount",
+                              widget.totalAmount,
                             ),
                           ],
                         ),
@@ -544,7 +381,8 @@ class _ProdouctListPageState extends State<ProdouctListPage> {
                                   ],
                                 ),
                               if (pageType == pagesState[1]) const Divider(),
-                              if (!(pageType == pagesState[1]))
+                              if (!(pageType == pagesState[1]) &&
+                                  isDeliveryForToday)
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -718,8 +556,9 @@ class _ProdouctListPageState extends State<ProdouctListPage> {
                                     ),
                                   ],
                                 ),
-                              const Gap(5),
-                              if (!(pageType == pagesState[1]))
+                              if (isDeliveryForToday) const Gap(5),
+                              if (!(pageType == pagesState[1]) &&
+                                  isDeliveryForToday)
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -738,7 +577,8 @@ class _ProdouctListPageState extends State<ProdouctListPage> {
                                     ),
                                   ],
                                 ),
-                              if ((pageType == pagesState[1]))
+                              if ((pageType == pagesState[1]) &&
+                                  isDeliveryForToday)
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -767,7 +607,7 @@ class _ProdouctListPageState extends State<ProdouctListPage> {
               ) +
               <Widget>[
                 if (!(pageType == pagesState[1])) const Gap(20),
-                if (!(pageType == pagesState[1]))
+                if (!(pageType == pagesState[1]) && isDeliveryForToday)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -814,7 +654,7 @@ class _ProdouctListPageState extends State<ProdouctListPage> {
                     ],
                   ),
                 if (!(pageType == pagesState[1])) const Gap(30),
-                if (!(pageType == pagesState[1]))
+                if (!(pageType == pagesState[1]) && isDeliveryForToday)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -829,135 +669,7 @@ class _ProdouctListPageState extends State<ProdouctListPage> {
                         width: MediaQuery.of(context).size.width * 0.45,
                         child: ElevatedButton(
                           onPressed: () async {
-                            if (formKey.currentState!.validate()) {
-                              loadingTextController.currentState.value = 0;
-                              loadingTextController.loadingText.value =
-                                  'Accessing Your Location\nPlease wait...';
-
-                              showCoustomPopUpLoadingDialog(context,
-                                  isCuputino: true);
-
-                              try {
-                                final position =
-                                    await Geolocator.getCurrentPosition(
-                                  locationSettings: AndroidSettings(
-                                      timeLimit: const Duration(seconds: 30)),
-                                );
-
-                                List<Delivery> listOfDelivery = [];
-                                for (int i = 0; i < productList.length; i++) {
-                                  final e = productList[i];
-                                  String returnText =
-                                      returnTextEditingControllerList[i]
-                                          .text
-                                          .trim();
-                                  String receiveText =
-                                      receiveTextEditingControllerList[i].text;
-                                  if (returnText.isEmpty) returnText = "0";
-                                  if (receiveText.isEmpty) receiveText = "0";
-                                  listOfDelivery.add(
-                                    Delivery(
-                                      matnr: e.matnr,
-                                      batch: e.batch,
-                                      quantity: (productList[i].quantity ?? 0)
-                                          .toInt(),
-                                      tp: e.tp,
-                                      vat: e.vat,
-                                      netVal: e.netVal,
-                                      deliveryQuantity: int.parse(receiveText),
-                                      deliveryNetVal:
-                                          (((e.netVal ?? 0) + (e.vat ?? 0)) /
-                                                  (productList[i].quantity ?? 0)
-                                                      .toInt()) *
-                                              int.parse(receiveText),
-                                      returnQuantity: int.parse(returnText),
-                                      returnNetVal:
-                                          (((e.netVal ?? 0) + (e.vat ?? 0)) /
-                                                  (productList[i].quantity ?? 0)
-                                                      .toInt()) *
-                                              int.parse(returnText),
-                                      id: e.id,
-                                    ),
-                                  );
-                                }
-
-                                final deliveryData = DeliveryData(
-                                  billingDocNo: widget.invoice.billingDocNo,
-                                  billingDate: DateFormat('yyyy-MM-dd')
-                                      .format(widget.invoice.billingDate!),
-                                  routeCode: widget.invoice.routeCode,
-                                  partner: widget.invoice.partner,
-                                  gatePassNo: widget.invoice.gatePassNo,
-                                  daCode: (widget.invoice.daCode ?? 0)
-                                      .toInt()
-                                      .toString(),
-                                  vehicleNo: widget.invoice.vehicleNo,
-                                  deliveryLatitude:
-                                      position.latitude.toString(),
-                                  deliveryLongitude:
-                                      position.longitude.toString(),
-                                  transportType: widget.invoice.transportType,
-                                  deliveryStatus: 'Done',
-                                  lastStatus: "delivery",
-                                  type: "delivery",
-                                  cashCollection: 0.00,
-                                  cashCollectionLatitude: null,
-                                  cashCollectionLongitude: null,
-                                  cashCollectionStatus: null,
-                                  deliverys: listOfDelivery,
-                                );
-                                if (kDebugMode) {
-                                  print(deliveryData.toJson());
-                                }
-                                loadingTextController.loadingText.value =
-                                    'Your Location Accessed\nSending data to server\nPlease wait...';
-                                final uri = Uri.parse(base + saveDeliveryList);
-                                final response = await http.post(
-                                  uri,
-                                  headers: {"Content-Type": "application/json"},
-                                  body: deliveryData.toJson(),
-                                );
-                                if (kDebugMode) {
-                                  print(response.body);
-                                }
-                                if (kDebugMode) {
-                                  print(response.statusCode);
-                                }
-
-                                if (response.statusCode == 200) {
-                                  final decoded = Map<String, dynamic>.from(
-                                      jsonDecode(response.body));
-                                  if (decoded['success'] == true) {
-                                    loadingTextController.currentState.value =
-                                        0;
-                                    loadingTextController.loadingText.value =
-                                        'Successful';
-                                    invoiceListController.invoiceList.removeAt(
-                                      widget.index,
-                                    );
-                                    await Future.delayed(
-                                        const Duration(milliseconds: 100));
-                                    if (Navigator.canPop(context)) {
-                                      Navigator.pop(context);
-                                    }
-                                    Get.back();
-                                  } else {
-                                    loadingTextController.currentState.value =
-                                        -1;
-                                    loadingTextController.loadingText.value =
-                                        decoded['message'];
-                                  }
-                                } else {
-                                  loadingTextController.currentState.value = -1;
-                                  loadingTextController.loadingText.value =
-                                      'Something went worng with ${response.statusCode}';
-                                }
-                              } catch (e) {
-                                loadingTextController.currentState.value = -1;
-                                loadingTextController.loadingText.value =
-                                    'Unable to access your location';
-                              }
-                            }
+                            await onDeliveredButtonPressed(context);
                           },
                           child: const Text("Delivered"),
                         ),
@@ -968,6 +680,146 @@ class _ProdouctListPageState extends State<ProdouctListPage> {
         ),
       ),
     );
+  }
+
+  Future<void> onDeliveredButtonPressed(BuildContext context) async {
+    if (formKey.currentState!.validate()) {
+      loadingTextController.currentState.value = 0;
+      loadingTextController.loadingText.value =
+          'Accessing Your Location\nPlease wait...';
+
+      showCoustomPopUpLoadingDialog(context, isCuputino: true);
+
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings:
+              AndroidSettings(timeLimit: const Duration(seconds: 30)),
+        );
+
+        List<Delivery> listOfDelivery = [];
+        for (int i = 0; i < productList.length; i++) {
+          final e = productList[i];
+          String returnText = returnTextEditingControllerList[i].text.trim();
+          String receiveText = receiveTextEditingControllerList[i].text;
+          if (returnText.isEmpty) returnText = "0";
+          if (receiveText.isEmpty) receiveText = "0";
+          listOfDelivery.add(
+            Delivery(
+              matnr: e.matnr,
+              batch: e.batch,
+              quantity: (productList[i].quantity ?? 0).toInt(),
+              tp: e.tp,
+              vat: e.vat,
+              netVal: e.netVal,
+              deliveryQuantity: int.parse(receiveText),
+              deliveryNetVal: (((e.netVal ?? 0) + (e.vat ?? 0)) /
+                      (productList[i].quantity ?? 0).toInt()) *
+                  int.parse(receiveText),
+              returnQuantity: int.parse(returnText),
+              returnNetVal: (((e.netVal ?? 0) + (e.vat ?? 0)) /
+                      (productList[i].quantity ?? 0).toInt()) *
+                  int.parse(returnText),
+              id: e.id,
+            ),
+          );
+        }
+
+        final deliveryData = DeliveryData(
+          billingDocNo: widget.invoice.billingDocNo,
+          billingDate:
+              DateFormat('yyyy-MM-dd').format(widget.invoice.billingDate!),
+          routeCode: widget.invoice.routeCode,
+          partner: widget.invoice.partner,
+          gatePassNo: widget.invoice.gatePassNo,
+          daCode: (widget.invoice.daCode ?? 0).toInt().toString(),
+          vehicleNo: widget.invoice.vehicleNo,
+          deliveryLatitude: position.latitude.toString(),
+          deliveryLongitude: position.longitude.toString(),
+          transportType: widget.invoice.transportType,
+          deliveryStatus: 'Done',
+          lastStatus: "delivery",
+          type: "delivery",
+          cashCollection: 0.00,
+          cashCollectionLatitude: null,
+          cashCollectionLongitude: null,
+          cashCollectionStatus: null,
+          deliverys: listOfDelivery,
+        );
+        if (kDebugMode) {
+          print(deliveryData.toJson());
+        }
+        loadingTextController.loadingText.value =
+            'Your Location Accessed\nSending data to server\nPlease wait...';
+        final uri = Uri.parse(base + saveDeliveryList);
+        final response = await http.post(
+          uri,
+          headers: {"Content-Type": "application/json"},
+          body: deliveryData.toJson(),
+        );
+        if (kDebugMode) {
+          print(response.body);
+        }
+        if (kDebugMode) {
+          print(response.statusCode);
+        }
+
+        if (response.statusCode == 200) {
+          final decoded = Map<String, dynamic>.from(jsonDecode(response.body));
+          if (decoded['success'] == true) {
+            try {
+              final box = Hive.box('info');
+              final url = Uri.parse(
+                "$base${(pageType == pagesState[0] || pageType == pagesState[1]) ? getDelivaryList : cashCollectionList}/${box.get('sap_id')}?type=${(pageType == pagesState[1] ? "Done" : "Remaining")}&date=${DateFormat('yyyy-MM-dd').format(DateTime.now())}",
+              );
+
+              final response = await http.get(url);
+
+              if (response.statusCode == 200) {
+                if (kDebugMode) {
+                  print("Got Delivery Remaning List");
+                  print(response.body);
+                }
+
+                final controller = Get.put(
+                  DeliveryRemaningController(
+                    DeliveryRemaing.fromJson(response.body),
+                  ),
+                );
+                controller.deliveryRemaing.value =
+                    DeliveryRemaing.fromJson(response.body);
+                controller.constDeliveryRemaing.value =
+                    DeliveryRemaing.fromJson(response.body);
+                controller.deliveryRemaing.value.result ??= [];
+                controller.constDeliveryRemaing.value.result ??= [];
+              }
+            } catch (e) {
+              log(e.toString());
+            }
+            loadingTextController.currentState.value = 0;
+            loadingTextController.loadingText.value = 'Successful';
+            invoiceListController.invoiceList.removeAt(
+              widget.index,
+            );
+            await Future.delayed(const Duration(milliseconds: 100));
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            }
+            Get.back();
+          } else {
+            loadingTextController.currentState.value = -1;
+            loadingTextController.loadingText.value = decoded['message'];
+          }
+        } else {
+          loadingTextController.currentState.value = -1;
+          loadingTextController.loadingText.value =
+              'Something went worng with ${response.statusCode}';
+        }
+      } catch (e) {
+        loadingTextController.currentState.value = -1;
+        loadingTextController.loadingText.value =
+            'Unable to access your location';
+      }
+    }
   }
 
   TextStyle style = const TextStyle(fontSize: 17, fontWeight: FontWeight.bold);
